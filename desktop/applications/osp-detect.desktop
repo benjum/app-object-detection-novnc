@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Object detection
+GenericName=Object detection terminal
+Comment=A terminal that has already told you what to type
+Exec=xfce4-terminal --disable-server --title="Object detection" --command=detect-shell
+Icon=applications-science
+Terminal=false
+Categories=Science;Education;Graphics;
+StartupNotify=true

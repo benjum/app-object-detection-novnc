@@ -1,0 +1,175 @@
+#!/bin/sh
+# detect - run the object detector on an image, from a terminal.
+#
+# A thin wrapper around /app/run.py, which is byte-for-byte the program the
+# batch app app-object-detection runs. Everything it accepts, this accepts:
+#
+#     detect photo.jpg                    # the short form
+#     detect --image photo.jpg --conf 0.4 # run.py's own flags, unchanged
+#     detect --open photo.jpg             # ...and show the result afterwards
+#
+# The only things added are the bare-filename shorthand and --open. Anything
+# else is handed to run.py untouched, so a command that works here works
+# unchanged against the batch container.
+set -eu
+
+APP_RUN="${APP_RUN:-/app/run.py}"
+APP_PYTHON="${APP_PYTHON:-/opt/venv/bin/python3}"
+
+usage() {
+    cat <<'USAGE'
+detect - object detection on an image, using the model baked into this image.
+
+Usage:
+  detect [--open] <image> [run.py options...]
+  detect [--open] --image <image> [run.py options...]
+
+Options added by this wrapper:
+  --open, -o          open the annotated result in the image viewer afterwards
+  --help, -h          this message
+
+Options passed straight through to run.py:
+  --image PATH        input image
+  --output-dir DIR    where to write results        (default: current directory)
+  --model PATH        weights                       (default: $APP_MODEL)
+  --conf FLOAT        confidence threshold          (default: 0.25)
+
+Writes <stem>_detected.jpg and detections.json into the output directory.
+
+Examples:
+  detect photo.jpg
+  detect --open photo.jpg --conf 0.4
+  detect --image photo.jpg --output-dir results
+USAGE
+}
+
+list_images_here() {
+    _found=0
+    for _f in *.jpg *.jpeg *.png *.bmp *.webp; do
+        [ -f "$_f" ] || continue
+        case "$_f" in *_detected.jpg) continue ;; esac
+        if [ "$_found" -eq 0 ]; then
+            echo "Images in $(pwd):"
+            _found=1
+        fi
+        echo "  $_f"
+    done
+    if [ "$_found" -eq 0 ]; then
+        echo "No images in $(pwd). Copy one in, or open the Files window on the desktop."
+    fi
+}
+
+if [ "$#" -eq 0 ]; then
+    usage
+    echo
+    list_images_here
+    exit 0
+fi
+
+# --- argument scan ---------------------------------------------------------
+# POSIX sh has no arrays, so walk the positional parameters once: shift each
+# off the front, inspect it, and append it back to the end. After $# rounds the
+# list is in its original order, minus anything deliberately dropped (--open)
+# and with the bare filename promoted to --image.
+_open=0
+_image=""
+_outdir="."
+_positional=""
+_expect=""
+
+_n=$#
+_i=0
+while [ "$_i" -lt "$_n" ]; do
+    _arg="$1"
+    shift
+    _i=$((_i + 1))
+
+    # This token is the value of the option we saw last time round.
+    if [ -n "$_expect" ]; then
+        case "$_expect" in
+            image)      _image="$_arg" ;;
+            output-dir) _outdir="$_arg" ;;
+        esac
+        _expect=""
+        set -- "$@" "$_arg"
+        continue
+    fi
+
+    case "$_arg" in
+        -o|--open)      _open=1; continue ;;          # ours: not passed on
+        -h|--help|help) usage; exit 0 ;;
+        --image)        _expect=image ;;
+        --image=*)      _image="${_arg#--image=}" ;;
+        --output-dir)   _expect=output-dir ;;
+        --output-dir=*) _outdir="${_arg#--output-dir=}" ;;
+        --model|--conf) _expect=other ;;              # has a value; not ours
+        -*)             : ;;                          # some other run.py flag
+        *)
+            # The first bare word is the image, unless --image already gave us
+            # one. Anything after that is run.py's problem.
+            if [ -z "$_positional" ] && [ -z "$_image" ]; then
+                _positional="$_arg"
+                continue
+            fi
+            ;;
+    esac
+    set -- "$@" "$_arg"
+done
+
+if [ -n "$_expect" ]; then
+    echo "detect: --${_expect} needs a value" >&2
+    exit 2
+fi
+
+if [ -n "$_positional" ]; then
+    _image="$_positional"
+    set -- --image "$_image" "$@"
+fi
+
+if [ -z "$_image" ]; then
+    echo "detect: no image given" >&2
+    echo >&2
+    usage >&2
+    exit 2
+fi
+
+# --- run -------------------------------------------------------------------
+"$APP_PYTHON" "$APP_RUN" "$@"
+
+# --- show ------------------------------------------------------------------
+# run.py names its outputs from the input stem; derive the same names rather
+# than parsing them back out of its stdout.
+_base="${_image##*/}"
+_stem="${_base%.*}"
+_annotated="${_outdir}/${_stem}_detected.jpg"
+
+if [ "$_open" -eq 0 ]; then
+    exit 0
+fi
+
+if [ ! -f "$_annotated" ]; then
+    echo "detect: expected $_annotated, but it is not there; nothing to open." >&2
+    exit 1
+fi
+
+if [ -z "${DISPLAY:-}" ]; then
+    echo "detect: no DISPLAY, so nothing to open it with. The result is at:"
+    echo "  $_annotated"
+    exit 0
+fi
+
+# ristretto loads the containing directory into its thumbnail strip, so opening
+# the annotated image puts the original one arrow-key away -- which is the
+# comparison you actually want to make.
+if command -v ristretto >/dev/null 2>&1; then
+    ristretto "$_annotated" >/dev/null 2>&1 &
+elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$_annotated" >/dev/null 2>&1 &
+elif command -v feh >/dev/null 2>&1; then
+    feh "$_annotated" "$_image" >/dev/null 2>&1 &
+else
+    echo "detect: no image viewer found; the result is at $_annotated" >&2
+    exit 1
+fi
+
+echo "Opened $_annotated in the viewer (arrow keys flip to the original)."

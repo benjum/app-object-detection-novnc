@@ -1,0 +1,17 @@
+# Fluxbox's root menu: right-click anywhere the desktop icons are not.
+# PCManFM draws the desktop, so it owns the left- and right-click there;
+# this menu is reached with a right-click on the title bars / edges, and is
+# the fallback if pcmanfm --desktop ever fails to start.
+
+[begin] (Object detection)
+    [exec] (Files)             {pcmanfm}
+    [exec] (Terminal)          {xfce4-terminal --disable-server}
+    [exec] (Object detection)  {xfce4-terminal --disable-server --title="Object detection" --command=detect-shell}
+    [exec] (Image Viewer)      {ristretto}
+    [separator]
+    [submenu] (Window manager)
+        [config]     (Configure)
+        [workspaces] (Workspaces)
+        [restart]    (Restart)
+    [end]
+[end]

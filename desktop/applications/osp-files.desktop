@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Files
+GenericName=File Manager
+Comment=Browse your images and their detection results
+Exec=pcmanfm %U
+Icon=system-file-manager
+Terminal=false
+Categories=System;Utility;Core;FileTools;FileManager;
+MimeType=inode/directory;
+StartupNotify=true

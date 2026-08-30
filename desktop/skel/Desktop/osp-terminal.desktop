@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Terminal
+GenericName=Terminal Emulator
+Comment=A shell in your home directory, where `detect` lives
+Exec=xfce4-terminal --disable-server
+Icon=utilities-terminal
+Terminal=false
+Categories=System;Utility;TerminalEmulator;
+StartupNotify=true

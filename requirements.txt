@@ -1,0 +1,18 @@
+# Pinned direct dependency, held in step with app-object-detection: the two
+# images run the same run.py and must agree on the library under it.
+#
+# Ultralytics pulls in numpy, matplotlib, pillow, polars and opencv-python
+# itself -- opencv-python is a hard requirement of ultralytics, so listing
+# opencv-python-headless here as well only installs a second, shadowing copy
+# of cv2. Hence libgl1 in the Dockerfile.
+#
+# Pillow arrives the same way and is what desktop/make-wallpaper.py uses at
+# build time, so it is not listed separately either.
+#
+# torch and torchvision are NOT listed here: the Dockerfile installs the
+# CPU-only builds from PyTorch's own index first, and this file's install then
+# finds them already satisfied.
+#
+# Everything is installed at build time. Nothing may be fetched at run time: a
+# .sif is read-only and compute nodes are often offline.
+ultralytics==8.4.131
