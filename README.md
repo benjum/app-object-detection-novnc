@@ -120,14 +120,15 @@ fluxbox is the window manager, unchanged from `app-novnc`. On top of it:
   `text/plain`, double-clicking a `.txt` — or the `detections.json` the app
   just wrote — opens a "choose an application" dialog with nothing useful in
   it.
-- **`quick_exec=1`** in `libfm.conf`. Without it, double-clicking a launcher on
-  the desktop pops *This file is an executable… Open / Execute / Cancel*
-  instead of starting the application. libfm's name for it is "don't ask user
-  for action on executable launch", and it is off by default. It is the only
-  switch for this, and the consequence is that an executable script
-  double-clicked in a file window now runs rather than asking — which is what
-  every other desktop does. Making a launcher executable (the entrypoint does)
-  is necessary but not sufficient; both are required.
+- **`quick_exec=1`** in `/etc/xdg/libfm/libfm.conf`. Without it,
+  double-clicking a launcher on the desktop pops *This file is an executable…
+  Open / Execute / Cancel* instead of starting the application. libfm's name
+  for it is "don't ask user for action on executable launch", and it is off by
+  default. It is the only switch for this, and the consequence is that an
+  executable script double-clicked in a file window now runs rather than
+  asking — which is what every other desktop does. Making a launcher
+  executable (the entrypoint does) is necessary but not sufficient; both are
+  required.
 - **xfce4-terminal**, started `--disable-server` so it does not depend on the
   session bus at all. `xterm` is still installed as a fallback.
 - **Papirus-Dark** icons and Adwaita GTK, with animations off: every frame of a
@@ -138,17 +139,34 @@ Desktop: *Files*, *Terminal*, *Image Viewer*, *Text Editor*, and *Object
 detection* (which opens `detect-shell` — a terminal that prints the help and
 lists the images in the directory before handing you a prompt).
 
-### Where the file associations live
+### Where the desktop configuration lives, and why it is split
 
-`mimeapps.list` is installed to `/usr/share/applications/`, **not** seeded into
-the home directory. That is the XDG location for distribution defaults, so the
-associations hold with `OSP_SEED_DESKTOP=0` and under any `$HOME`; a user who
-changes one through the GUI gets their own `~/.config/mimeapps.list`, which
-takes precedence without either file having to know about the other. Seeding a
-copy into the home directory instead would make the image's defaults a user
-*override* that then survived every subsequent image update.
+Two files are **system defaults baked into the image**, not seeded into the
+home directory:
 
-Every entry names our own desktop id (`osp-image-viewer.desktop`, not
+| File | Installed to | Holds |
+|---|---|---|
+| `desktop/mimeapps.list` | `/usr/share/applications/mimeapps.list` | which app opens which file type |
+| `desktop/libfm.conf` | `/etc/xdg/libfm/libfm.conf` | `quick_exec`, thumbnails, `terminal=` |
+
+Both are XDG locations for distribution defaults, so they hold with
+`OSP_SEED_DESKTOP=0`, under any `$HOME`, and in a home directory carried over
+from an older image. A user who changes either through the GUI gets their own
+copy under `~/.config`, which is read afterwards and wins. Seeding them into
+the home instead would make the image's defaults a user *override* that then
+survived every subsequent image update.
+
+**`/etc/xdg/libfm/libfm.conf` is not a stylistic choice.** libfm loads its
+config with `fm_config_load_from_file(cfg, NULL)`, which hardcodes the name
+`libfm/libfm.conf` and searches `XDG_CONFIG_DIRS` then `XDG_CONFIG_HOME`. It
+never reads `~/.config/pcmanfm/<profile>/libfm.conf` — that directory is for
+pcmanfm's own `pcmanfm.conf`, and a `libfm.conf` placed beside it is silently
+ignored. This image shipped one there at first, which is why `quick_exec`, the
+thumbnail settings and `terminal=` all looked set and none of them took effect.
+The tell is that the desktop icons appeared correctly (that is `pcmanfm.conf`,
+read from the profile directory) while nothing libfm owned worked.
+
+Every mimeapps entry names our own desktop id (`osp-image-viewer.desktop`, not
 `org.xfce.ristretto.desktop`). XFCE renamed ristretto's desktop file to a
 reverse-DNS id at some point; ours will not be renamed underneath us.
 
@@ -163,10 +181,11 @@ put in place is startup.
 `entrypoint.sh` copies `desktop/skel/` into the session home and **never
 overwrites an existing file**: your `gtk-3.0/settings.ini` and your edited
 launchers survive a restart. What it adds is
-`~/.config/gtk-3.0/settings.ini`, `~/.config/pcmanfm/default/`,
+`~/.config/gtk-3.0/settings.ini`, `~/.config/pcmanfm/default/pcmanfm.conf`,
 `~/.fluxbox/menu`, `~/Desktop/osp-*.desktop` and
 `~/README-object-detection.txt`. If you would rather it added nothing, set
-`OSP_SEED_DESKTOP=0`.
+`OSP_SEED_DESKTOP=0`. Note what is *not* in that list: the two system defaults
+above, precisely so that fixing one of them reaches an existing home.
 
 **The corollary, which bites when you update the image.** A home directory
 carried over from an older version — a bind mount you keep, or your real home

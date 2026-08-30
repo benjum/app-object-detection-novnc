@@ -177,13 +177,23 @@ RUN ln -s /app/bin/detect      /usr/local/bin/detect \
     && ln -s /app/bin/detect-shell /usr/local/bin/detect-shell \
     && cp /app/desktop/applications/*.desktop /usr/share/applications/ \
     && cp /app/desktop/mimeapps.list /usr/share/applications/mimeapps.list \
+    && mkdir -p /etc/xdg/libfm \
+    && cp /app/desktop/libfm.conf /etc/xdg/libfm/libfm.conf \
     && chmod 0644 /usr/share/applications/osp-*.desktop \
                   /usr/share/applications/mimeapps.list \
+                  /etc/xdg/libfm/libfm.conf \
     && update-desktop-database /usr/share/applications
-# mimeapps.list goes here, not into the home directory: this is the XDG
-# location for distribution defaults, so the associations hold with
-# OSP_SEED_DESKTOP=0 and under any $HOME, while a user who changes one through
-# the GUI gets their own ~/.config/mimeapps.list that overrides it.
+# Both of those files are system defaults, not seeded into the home directory,
+# so they hold with OSP_SEED_DESKTOP=0, under any $HOME, and in a home carried
+# over from an older image. A user changing either through the GUI gets their
+# own copy under ~/.config, which is read afterwards and wins.
+#
+# /etc/xdg/libfm/libfm.conf is the path libfm actually reads:
+# fm_config_load_from_file(cfg, NULL) hardcodes the name "libfm/libfm.conf" and
+# searches XDG_CONFIG_DIRS then XDG_CONFIG_HOME. A libfm.conf sitting in
+# ~/.config/pcmanfm/<profile>/ next to pcmanfm.conf is never opened -- which is
+# why quick_exec, the thumbnail settings and `terminal=` all appeared to be set
+# and none of them took effect.
 #
 # update-desktop-database builds mimeinfo.cache from the MimeType= lines, which
 # is what populates "Open With". mimeapps.list only picks the winner.

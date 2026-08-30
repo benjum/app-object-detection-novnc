@@ -167,6 +167,16 @@ _seed_home() {
 }
 _seed_home
 
+# Versions of this image before the fix seeded a libfm.conf into the pcmanfm
+# profile directory, where libfm never looks for it. Harmless to leave, but
+# it is exactly the file someone will find and edit while wondering why
+# nothing changes.
+if [ -f "$HOME/.config/pcmanfm/default/libfm.conf" ]; then
+    echo "[app] note: ~/.config/pcmanfm/default/libfm.conf is left over from an" >&2
+    echo "[app] older image. libfm does not read that path; the settings now come" >&2
+    echo "[app] from /etc/xdg/libfm/libfm.conf. The file is safe to delete." >&2
+fi
+
 mkdir -p "$HOME/Desktop" 2>/dev/null || true
 
 # X only creates /tmp/.X11-unix when it is running as root, which we never
