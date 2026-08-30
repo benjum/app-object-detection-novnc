@@ -114,17 +114,43 @@ fluxbox is the window manager, unchanged from `app-novnc`. On top of it:
 - **tumbler** is what makes those thumbnails exist. It is dbus-activated, which
   is why `entrypoint.sh` starts a session bus. Without one you get generic
   file icons and no explanation.
-- **ristretto** is the image viewer, wired to every image type through
-  `~/.config/mimeapps.list`.
+- **ristretto** is the image viewer and **mousepad** the text editor, wired to
+  every image and text type through `/usr/share/applications/mimeapps.list`.
+  An editor is not a luxury: with no application on the system claiming
+  `text/plain`, double-clicking a `.txt` — or the `detections.json` the app
+  just wrote — opens a "choose an application" dialog with nothing useful in
+  it.
+- **`quick_exec=1`** in `libfm.conf`. Without it, double-clicking a launcher on
+  the desktop pops *This file is an executable… Open / Execute / Cancel*
+  instead of starting the application. libfm's name for it is "don't ask user
+  for action on executable launch", and it is off by default. It is the only
+  switch for this, and the consequence is that an executable script
+  double-clicked in a file window now runs rather than asking — which is what
+  every other desktop does. Making a launcher executable (the entrypoint does)
+  is necessary but not sufficient; both are required.
 - **xfce4-terminal**, started `--disable-server` so it does not depend on the
   session bus at all. `xterm` is still installed as a fallback.
 - **Papirus-Dark** icons and Adwaita GTK, with animations off: every frame of a
   fade is a full framebuffer update pushed down the websocket.
 
-Four launchers ship in `/usr/share/applications` and are seeded onto the
-Desktop: *Files*, *Terminal*, *Image Viewer*, and *Object detection* (which
-opens `detect-shell` — a terminal that prints the help and lists the images
-in the directory before handing you a prompt).
+Five launchers ship in `/usr/share/applications` and are seeded onto the
+Desktop: *Files*, *Terminal*, *Image Viewer*, *Text Editor*, and *Object
+detection* (which opens `detect-shell` — a terminal that prints the help and
+lists the images in the directory before handing you a prompt).
+
+### Where the file associations live
+
+`mimeapps.list` is installed to `/usr/share/applications/`, **not** seeded into
+the home directory. That is the XDG location for distribution defaults, so the
+associations hold with `OSP_SEED_DESKTOP=0` and under any `$HOME`; a user who
+changes one through the GUI gets their own `~/.config/mimeapps.list`, which
+takes precedence without either file having to know about the other. Seeding a
+copy into the home directory instead would make the image's defaults a user
+*override* that then survived every subsequent image update.
+
+Every entry names our own desktop id (`osp-image-viewer.desktop`, not
+`org.xfce.ristretto.desktop`). XFCE renamed ristretto's desktop file to a
+reverse-DNS id at some point; ours will not be renamed underneath us.
 
 ### Why the configuration is seeded rather than baked
 
@@ -135,12 +161,26 @@ image never sees at build time — so the only moment the configuration can be
 put in place is startup.
 
 `entrypoint.sh` copies `desktop/skel/` into the session home and **never
-overwrites an existing file**: your `gtk-3.0/settings.ini`, your
-`mimeapps.list` and your edited launchers survive a restart. What it adds is
-`~/.config/gtk-3.0/settings.ini`, `~/.config/mimeapps.list`,
-`~/.config/pcmanfm/default/`, `~/.fluxbox/menu`, `~/Desktop/osp-*.desktop` and
+overwrites an existing file**: your `gtk-3.0/settings.ini` and your edited
+launchers survive a restart. What it adds is
+`~/.config/gtk-3.0/settings.ini`, `~/.config/pcmanfm/default/`,
+`~/.fluxbox/menu`, `~/Desktop/osp-*.desktop` and
 `~/README-object-detection.txt`. If you would rather it added nothing, set
 `OSP_SEED_DESKTOP=0`.
+
+**The corollary, which bites when you update the image.** A home directory
+carried over from an older version — a bind mount you keep, or your real home
+under Apptainer — keeps that version's configuration, so a fixed default never
+reaches you. The entrypoint says so on startup (`N file(s) seeded, M already
+yours`) and prints what to remove:
+
+```bash
+rm -rf ~/.config/pcmanfm ~/.config/gtk-3.0 ~/.fluxbox/menu ~/Desktop
+```
+
+Not overwriting is the right default — it is what protects an edited launcher —
+but it does mean "I pulled the new image and the bug is still there" is
+answered by that line in the log.
 
 ### Home versus working directory
 

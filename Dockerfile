@@ -15,7 +15,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 #    every photo is a generic icon, which defeats the purpose); ristretto is
 #    the viewer; dbus-x11 is what tumbler and GTK's file chooser talk over.
 #    An icon theme is not decoration either -- GTK apps with no icon theme
-#    installed render as unlabelled blank squares.
+#    installed render as unlabelled blank squares. Nor is mousepad: with no
+#    application on the system claiming text/plain, double-clicking a .txt or
+#    the detections.json this app just wrote opens a "choose an application"
+#    dialog with nothing useful in it.
 #
 # 3. Python, for the detector. Same CPU-only torch and ultralytics pins as
 #    app-object-detection. libgl1/libglib2.0-0: opencv-python links libGL.
@@ -26,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         fluxbox xterm x11-utils \
         feh \
         nginx-light gettext-base \
-        pcmanfm ristretto xfce4-terminal \
+        pcmanfm ristretto xfce4-terminal mousepad \
         tumbler tumbler-plugins-extra \
         dbus-x11 shared-mime-info xdg-utils desktop-file-utils \
         adwaita-icon-theme papirus-icon-theme gnome-themes-extra \
@@ -173,8 +176,17 @@ RUN python3 /app/desktop/make-wallpaper.py /app/desktop/wallpaper.png
 RUN ln -s /app/bin/detect      /usr/local/bin/detect \
     && ln -s /app/bin/detect-shell /usr/local/bin/detect-shell \
     && cp /app/desktop/applications/*.desktop /usr/share/applications/ \
+    && cp /app/desktop/mimeapps.list /usr/share/applications/mimeapps.list \
     && chmod 0644 /usr/share/applications/osp-*.desktop \
+                  /usr/share/applications/mimeapps.list \
     && update-desktop-database /usr/share/applications
+# mimeapps.list goes here, not into the home directory: this is the XDG
+# location for distribution defaults, so the associations hold with
+# OSP_SEED_DESKTOP=0 and under any $HOME, while a user who changes one through
+# the GUI gets their own ~/.config/mimeapps.list that overrides it.
+#
+# update-desktop-database builds mimeinfo.cache from the MimeType= lines, which
+# is what populates "Open With". mimeapps.list only picks the winner.
 # That chmod is not redundant with the `chmod -R a+rX /app` below: these copies
 # live outside /app, so the recursive fix never reaches them, and a .desktop
 # file the runtime user cannot read is a launcher that silently does not exist.

@@ -114,24 +114,55 @@ _seed_home() {
         return 0
     fi
     [ -d /app/desktop/skel ] || return 0
+    if [ ! -w "$HOME" ]; then
+        echo "[app] $HOME is not writable; desktop configuration not seeded." >&2
+        return 0
+    fi
 
-    # -type d first so the destinations exist; both walks are relative to skel,
-    # so no path is ever built from a name we did not put there ourselves.
-    (cd /app/desktop/skel && find . -mindepth 1 -type d -print) | while IFS= read -r _d; do
+    # The walks are redirected from a file rather than piped in. A `find | while`
+    # runs the loop body in a subshell, where the counters below would be
+    # incremented and then thrown away -- and the counts are the whole point of
+    # the message at the end. Both walks are relative to skel, so no path is
+    # ever built from a name we did not put there ourselves.
+    _list="$TMPDIR/seed-list.$$"
+
+    # -type d first, so the destinations exist before the files arrive.
+    (cd /app/desktop/skel && find . -mindepth 1 -type d -print) > "$_list"
+    while IFS= read -r _d; do
         mkdir -p "$HOME/${_d#./}" 2>/dev/null || true
-    done
-    (cd /app/desktop/skel && find . -type f -print) | while IFS= read -r _f; do
+    done < "$_list"
+
+    _new=0
+    _kept=0
+    (cd /app/desktop/skel && find . -type f -print) > "$_list"
+    while IFS= read -r _f; do
         _rel="${_f#./}"
         if [ -e "$HOME/$_rel" ]; then
+            _kept=$((_kept + 1))
             continue
         fi
         cp "/app/desktop/skel/$_rel" "$HOME/$_rel" 2>/dev/null || continue
         chmod u+w "$HOME/$_rel" 2>/dev/null || true
         echo "[app] seeded ~/$_rel"
-    done
+        _new=$((_new + 1))
+    done < "$_list"
+    rm -f "$_list"
+
     # PCManFM will not launch a .desktop file on the desktop unless it is
-    # executable -- it shows it as a text file instead.
+    # executable -- it shows it as a text file instead. (Even then it asks what
+    # to do with it, unless quick_exec=1 is set in libfm.conf; both are
+    # required.)
     chmod u+x "$HOME"/Desktop/*.desktop 2>/dev/null || true
+
+    echo "[app] desktop config: ${_new} file(s) seeded, ${_kept} already yours"
+    if [ "$_kept" -gt 0 ]; then
+        # Worth saying out loud. Never overwriting is what protects a user's
+        # edits, but it also means a home directory carried over from an older
+        # image keeps that image's defaults and silently misses fixes.
+        echo "[app] existing files are never overwritten. To take this image's"
+        echo "[app] defaults instead, remove them and restart:"
+        echo "[app]   rm -rf ~/.config/pcmanfm ~/.config/gtk-3.0 ~/.fluxbox/menu ~/Desktop"
+    fi
     return 0
 }
 _seed_home

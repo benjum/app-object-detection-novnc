@@ -1,0 +1,32 @@
+# Installed to /usr/share/applications/mimeapps.list -- the XDG location for
+# distribution defaults, which is deliberately NOT the home directory: these
+# work with OSP_SEED_DESKTOP=0, with any $HOME, and on the first run of a
+# freshly bind-mounted directory. A user who changes an association through the
+# GUI gets their own ~/.config/mimeapps.list, which takes precedence over this
+# without either file having to know about the other.
+#
+# Every entry names OUR desktop id rather than the upstream one. XFCE renamed
+# ristretto's desktop file to a reverse-DNS id at some point; osp-*.desktop is
+# ours and will not be renamed underneath us.
+
+[Default Applications]
+inode/directory=osp-files.desktop
+
+image/jpeg=osp-image-viewer.desktop
+image/png=osp-image-viewer.desktop
+image/gif=osp-image-viewer.desktop
+image/bmp=osp-image-viewer.desktop
+image/webp=osp-image-viewer.desktop
+image/tiff=osp-image-viewer.desktop
+image/x-portable-pixmap=osp-image-viewer.desktop
+
+text/plain=osp-text-editor.desktop
+application/json=osp-text-editor.desktop
+text/markdown=osp-text-editor.desktop
+text/csv=osp-text-editor.desktop
+text/xml=osp-text-editor.desktop
+application/xml=osp-text-editor.desktop
+application/x-yaml=osp-text-editor.desktop
+text/x-python=osp-text-editor.desktop
+text/x-shellscript=osp-text-editor.desktop
+text/x-log=osp-text-editor.desktop

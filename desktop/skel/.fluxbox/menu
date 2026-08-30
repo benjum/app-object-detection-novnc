@@ -8,6 +8,7 @@
     [exec] (Terminal)          {xfce4-terminal --disable-server}
     [exec] (Object detection)  {xfce4-terminal --disable-server --title="Object detection" --command=detect-shell}
     [exec] (Image Viewer)      {ristretto}
+    [exec] (Text Editor)       {mousepad --disable-server}
     [separator]
     [submenu] (Window manager)
         [config]     (Configure)

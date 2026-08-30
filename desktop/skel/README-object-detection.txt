@@ -41,6 +41,9 @@ Double-click either one to open the Image Viewer. It loads the whole folder,
 so the left and right arrow keys flip between the original and the annotated
 version at the same zoom — which is the comparison worth making.
 
+Double-click detections.json to read it in the Text Editor: one record per
+object, with the class name, the confidence and the box coordinates.
+
 4. Keeping your results
 -----------------------
 This home directory lives inside the container unless you bind-mounted it.
