@@ -84,8 +84,35 @@ RUN pip install --no-cache-dir -r requirements.txt
 # has to be able to seed the desktop configuration into this directory. The
 # sticky bit keeps one user from deleting another's files.
 ARG OSP_UID=1000
-RUN useradd --create-home --uid ${OSP_UID} --shell /bin/bash ospuser \
-    && chmod 1777 /home/ospuser
+# Ubuntu's base image has shipped a placeholder `ubuntu` account at uid 1000
+# since 24.04, so a plain `useradd --uid 1000` dies with "UID 1000 is not
+# unique". Debian-based images carry no such account, which is why
+# app-object-detection-jupyter needs none of this.
+#
+# Take the uid over rather than moving ospuser up to 1001. 1000 is the first
+# human-user id on a Linux host, so it is the one `--user "$(id -u)"` usually
+# lines up with, and the placeholder account has no purpose in this image.
+#
+# The name is read out of the passwd database rather than assumed to be
+# `ubuntu`, and the result is verified rather than the exit status trusted:
+# `userdel -r` returns 12 when there is no mail spool to remove, which is the
+# normal case in a container and is not a failure.
+RUN set -eu; \
+    existing="$(getent passwd ${OSP_UID} | cut -d: -f1)"; \
+    if [ -n "$existing" ]; then \
+        echo "[build] removing placeholder account '$existing' holding uid ${OSP_UID}"; \
+        userdel -r "$existing" >/dev/null 2>&1 || true; \
+        if getent passwd ${OSP_UID} >/dev/null; then \
+            echo "[build] could not free uid ${OSP_UID}" >&2; \
+            exit 1; \
+        fi; \
+    fi; \
+    if getent group ${OSP_UID} >/dev/null; then \
+        groupdel "$(getent group ${OSP_UID} | cut -d: -f1)"; \
+    fi; \
+    groupadd --gid ${OSP_UID} ospuser; \
+    useradd --create-home --uid ${OSP_UID} --gid ${OSP_UID} --shell /bin/bash ospuser; \
+    chmod 1777 /home/ospuser
 
 # A .sif is mounted read-only, so every library scratch path goes to /tmp and
 # the model weights are baked in at a fixed absolute path. APP_MODEL is the
